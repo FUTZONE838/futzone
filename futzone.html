@@ -1,0 +1,868 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>FUTZONE</title>
+
+<style>
+    
+body {
+    margin: 0;
+    font-family: Arial, sans-serif;
+    background: linear-gradient(270deg, #0f3d1f, #1c5e2e, #0f3d1f);
+    background-size: 600% 600%;
+    animation: fondoAnimado 15s ease infinite;
+    color: white;
+}
+
+/* Animación fondo */
+@keyframes fondoAnimado {
+    0% {background-position: 0% 50%;}
+    50% {background-position: 100% 50%;}
+    100% {background-position: 0% 50%;}
+}
+
+header {
+    background: rgba(0,0,0,0.3);
+    padding: 15px;
+    text-align: center;
+    font-size: 30px;
+    font-weight: bold;
+}
+
+nav {
+    background: rgba(0,0,0,0.2);
+    padding: 10px;
+    text-align: center;
+}
+
+nav button {
+    margin: 5px;
+    padding: 10px 15px;
+    border: none;
+    background: #a4d17a;
+    cursor: pointer;
+    border-radius: 8px;
+}
+
+section {
+    display: none;
+    padding: 20px;
+}
+
+.active {
+    display: block;
+}
+
+/* Cards */
+.card {
+    background: rgba(255,255,255,0.1);
+    padding: 15px;
+    margin: 10px;
+    border-radius: 12px;
+    cursor: pointer;
+}
+
+.center {
+    text-align: center;
+}
+
+/* INICIO */
+#inicio {
+    background: 
+    linear-gradient(rgba(0,0,0,0.5), rgba(0,0,0,0.5)),
+    url("https://i.pinimg.com/1200x/a6/88/e6/a688e687e66e183d9af91d260c17118b.jpg") no-repeat center center/cover;
+
+    min-height: 100vh;
+    padding-top: 60px;
+}
+
+
+
+</style>
+
+</head>
+
+<body>
+
+    <div id="modalConfirm" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:#000000aa; justify-content:center; align-items:center; z-index:999;">
+    
+    <div style="background:white; color:black; padding:20px; border-radius:12px; width:300px; text-align:center;">
+        
+        <h3 id="modalTexto">¿Estás seguro?</h3>
+        
+        <br>
+        
+        <button onclick="confirmarAccion()" style="background:#4CAF50; color:white; padding:8px 15px; border:none; border-radius:8px;">✅ Sí</button>
+        
+        <button onclick="cerrarModal()" style="background:#f44336; color:white; padding:8px 15px; border:none; border-radius:8px;">❌ No</button>
+    
+    </div>
+
+</div>
+
+<header>⚽ FUTZONE</header>
+
+<nav>
+<button onclick="mostrar('inicio'); mostrarInicio()">Inicio</button>
+<button onclick="mostrar('torneos')">Torneos</button>
+<button onclick="mostrar('estadisticas'); mostrarEstadisticas()">Estadísticas</button>
+<button onclick="mostrar('equipos')">Equipos</button>
+<button onclick="mostrar('partidos')">Partidos</button>
+<button onclick="compartirPagina()">📲 Compartir</button>
+</nav>
+
+<!-- INICIO -->
+<section id="inicio" class="active center">
+<h2>Proximos Partidos</h2>
+
+<div id="ProximosPartidos"></div>
+
+</section>
+
+<!-- EQUIPOS -->
+<section id="equipos">
+<h2>Equipos</h2>
+
+</section>
+
+<!-- PARTIDOS -->
+<section id="partidos">
+<h2>Partidos</h2>
+
+</section>
+
+<!-- ESTADISTICAS -->
+<section id="estadisticas">
+    <h2>📊 Estadísticas por torneo</h2>
+
+    <div id="listaStats"></div>
+    <div id="tablaStats"></div>
+</section>
+
+</section>
+
+<!-- torneos -->
+<section id="torneos">
+    <h2>Torneos</h2>
+
+    <!-- CREAR TORNEO -->
+    <input type="text" id="nombreTorneo" placeholder="Nombre del torneo">
+<input type="date" id="fechaTorneo">
+<button onclick="crearTorneo()">Crear torneo</button>
+
+<br><br>
+
+<input type="text" id="buscador" placeholder="Buscar torneo o equipo" onkeyup="buscar()">
+
+    <div id="listaTorneos"></div>
+</section>
+
+<script>
+
+/* CAMBIAR SECCIÓN */
+function mostrar(seccion) {
+    document.querySelectorAll("section").forEach(s => s.classList.remove("active"));
+    document.getElementById(seccion).classList.add("active");
+}
+
+
+function verEquipo(nombre) {
+    mostrar("estadisticas");
+    let datos = datosEquipos[nombre];
+    tituloEquipo.innerText = nombre;
+    contenidoStats.innerHTML = `Goles: ${datos.goles}<br>Ranking: #${datos.ranking}`;
+}
+
+/* STORAGE */
+let torneos = JSON.parse(localStorage.getItem("torneos")) || [];
+
+function guardarDatos() {
+    localStorage.setItem("torneos", JSON.stringify(torneos));
+}
+
+
+/*torneos*/
+
+/* CREAR TORNEO */
+function crearTorneo() {
+    let nombre = nombreTorneo.value.trim();
+    let fecha = fechaTorneo.value;
+
+    if(!nombre || !fecha) return alert("Completa todo");
+
+    torneos.push({
+        nombre,
+        fecha,
+        equipos: [],
+        partidos: []
+    });
+
+    nombreTorneo.value = "";
+    fechaTorneo.value = "";
+
+    guardarDatos();
+    mostrarTorneos();
+}
+function normalizarDatos(){
+    torneos.forEach(t => {
+        (t.partidos || []).forEach(p => {
+            if(!p.torneo){
+                p.torneo = t.nombre;
+            }
+        });
+    });
+    guardarDatos();
+}
+
+normalizarDatos();
+
+/* ELIMINAR */
+function eliminarTorneo(i){
+    abrirModal("¿Eliminar este torneo?", () => {
+        torneos.splice(i,1);
+        guardarDatos();
+        mostrarTorneos();
+        mostrarInicio();
+    });
+}
+
+function agregarEquipo(i){
+    let eq = prompt("Equipo:");
+    if(!eq) return;
+
+    eq = eq.trim();
+
+    // 🚫 VALIDAR VACÍO
+    if(eq === ""){
+        alert("Nombre inválido");
+        return;
+    }
+
+    // 🔥 NORMALIZAR (para evitar duplicados tipo mayúsculas/minúsculas)
+    let existe = torneos[i].equipos.some(e => 
+        e.toLowerCase() === eq.toLowerCase()
+    );
+
+    if(existe){
+        alert("Ese equipo ya existe en el torneo");
+        return;
+    }
+
+    torneos[i].equipos.push(eq);
+
+    guardarDatos();
+    mostrarTorneos();
+}
+
+/* GENERAR PARTIDOS */
+function formatearFecha(fecha){
+    let partes = fecha.split("-");
+
+    let fechaObj = new Date(
+        partes[0],
+        partes[1] - 1,
+        partes[2]
+    );
+
+    let hoy = new Date();
+    let manana = new Date();
+    let ayer = new Date();
+
+    manana.setDate(hoy.getDate() + 1);
+    ayer.setDate(hoy.getDate() - 1);
+
+    function soloFecha(f){
+        return new Date(f.getFullYear(), f.getMonth(), f.getDate()).getTime();
+    }
+
+    if(soloFecha(fechaObj) === soloFecha(hoy)){
+        return "🔥 HOY";
+    }
+
+    if(soloFecha(fechaObj) === soloFecha(manana)){
+        return "⏭️ MAÑANA";
+    }
+
+    if(soloFecha(fechaObj) === soloFecha(ayer)){
+        return "⏮️ AYER";
+    }
+
+    let opciones = { 
+        weekday: 'long', 
+        day: 'numeric', 
+        month: 'long' 
+    };
+
+    let f = fechaObj.toLocaleDateString('es-CO', opciones);
+
+    return f.charAt(0).toUpperCase() + f.slice(1);
+}
+
+function generarPartidos(index){
+    let equipos = torneos[index].equipos;
+    let nombreTorneo = torneos[index].nombre; // 🔥 IMPORTANTE
+
+    if(equipos.length < 2){
+        alert("Necesitas mínimo 2 equipos");
+        return;
+    }
+
+    let partidos = [];
+    let fechaBase = torneos[index].fecha;
+    let contadorDias = 0;
+
+    for(let i = 0; i < equipos.length; i++){
+        for(let j = i + 1; j < equipos.length; j++){
+
+            let partes = fechaBase.split("-");
+            let fecha = new Date(partes[0], partes[1]-1, partes[2]);
+            fecha.setDate(fecha.getDate() + contadorDias);
+
+            let fechaFinal = fecha.getFullYear() + "-" +
+                String(fecha.getMonth()+1).padStart(2,'0') + "-" +
+                String(fecha.getDate()).padStart(2,'0');
+
+            let horas = [14, 16, 18, 20];
+            let horaBase = horas[contadorDias % horas.length];
+
+            let horaFinal = (horaBase > 12 ? horaBase - 12 : horaBase) +
+                ":00 " + (horaBase >= 12 ? "PM" : "AM");
+
+            partidos.push({
+                local: equipos[i],
+                visitante: equipos[j],
+                torneo: nombreTorneo, // ✅ AQUÍ ESTÁ LA CLAVE
+                fecha: fechaFinal,
+                hora: horaFinal,
+                golesLocal: 0,
+                golesVisitante: 0,
+                faltas: 0
+            });
+
+            contadorDias++;
+        }
+    }
+
+    torneos[index].partidos = partidos;
+
+    guardarDatos();
+    mostrarTorneos();
+    mostrarInicio();
+}
+
+
+
+/* REGISTRAR RESULTADO */
+function registrarResultado(i,j){
+    let g1 = prompt("Goles local");
+    let g2 = prompt("Goles visitante");
+    let f = prompt("Faltas");
+
+    let p = torneos[i].partidos[j];
+
+    p.golesLocal = +g1 || 0;
+    p.golesVisitante = +g2 || 0;
+    p.faltas = +f || 0;
+
+    guardarDatos();
+    mostrarTorneos();
+}
+
+/* BUSCAR */
+function buscar(){
+    let txt = buscador.value.toLowerCase();
+
+    let filtrados = torneos.filter(t =>
+        t.nombre.toLowerCase().includes(txt) ||
+        t.equipos.some(e => e.toLowerCase().includes(txt))
+    );
+
+    mostrarTorneos(filtrados);
+}
+
+/* MOSTRAR TORNEOS */
+function mostrarTorneos(lista = torneos){
+    listaTorneos.innerHTML = "";
+
+    lista.forEach((t,i)=>{
+        listaTorneos.innerHTML += `
+        <div class="card">
+            <h3>
+         🏆 <input type="text" value="${t.nombre}" 
+         onchange="editarNombreTorneo(${i}, this.value)">
+         </h3>
+            📅 ${formatearFecha(t.fecha)}<br>
+
+            <br><br>
+
+            <button onclick="agregarEquipo(${i})">➕ Equipo</button>
+            <button onclick="generarPartidos(${i})">⚽ Generar</button>
+            <button onclick="eliminarTorneo(${i})">❌ Eliminar</button>
+            <button onclick="mostrar('estadisticas'); verTablaTorneo(${i})">
+            📊 Ver tabla
+         </button>
+
+            <h4>Equipos:</h4>
+            ${t.equipos.map((e, indexEquipo)=>`
+         <p>
+          ⚽ ${e}
+           <button onclick="eliminarEquipo(${i}, ${indexEquipo})">❌</button>
+         </p>
+         `).join("")}
+
+            <h4>Partidos generados:</h4>
+            ${(t.partidos || []).map((p,j)=>`
+         <div class="card">
+         🆚 <b>${p.local} vs ${p.visitante}</b><br>
+         📅 <input type="date" value="${p.fecha}" onchange="editarFecha(${i},${j},this.value)">
+         🕒 <input type="time" value="${convertirHoraInput(p.hora)}" onchange="editarHora(${i},${j},this.value)">
+          ⚽ ${p.golesLocal} - ${p.golesVisitante}<br>
+         <button onclick="registrarResultado(${i},${j})">Registrar</button>
+         </div>
+         `).join("")}
+        </div>
+        `;
+    });
+}
+function editarFecha(i,j,val){
+    torneos[i].partidos[j].fecha = val;
+    guardarDatos();
+    mostrarInicio();
+}
+
+function editarHora(i,j,val){
+    let [h,m]=val.split(":");
+
+    let hora=parseInt(h);
+    let periodo=hora>=12?"PM":"AM";
+
+    if(hora>12) hora-=12;
+    if(hora===0) hora=12;
+
+    torneos[i].partidos[j].hora=`${hora}:${m} ${periodo}`;
+    guardarDatos();
+    mostrarInicio();
+}
+
+function convertirHoraInput(hora){
+    if(!hora) return "";
+
+    let [h,resto] = hora.split(":");
+    let [m,periodo] = resto.split(" ");
+
+    h = parseInt(h);
+
+    if(periodo === "PM" && h !== 12) h += 12;
+    if(periodo === "AM" && h === 12) h = 0;
+
+    return String(h).padStart(2,"0") + ":" + m;
+}
+function mostrarInicio(){
+
+    let contenedor = document.getElementById("ProximosPartidos");
+    contenedor.innerHTML = "";
+
+    let hoy = new Date();
+    let manana = new Date();
+    manana.setDate(hoy.getDate() + 1);
+
+    function formatearSimple(fecha){
+        let partes = fecha.split("-");
+        return new Date(partes[0], partes[1]-1, partes[2]);
+    }
+
+    function esMismaFecha(f1, f2){
+        return f1.getFullYear() === f2.getFullYear() &&
+               f1.getMonth() === f2.getMonth() &&
+               f1.getDate() === f2.getDate();
+    }
+
+    let partidosFiltrados = [];
+
+    // 🔥 SOLO HOY Y MAÑANA
+    torneos.forEach(t=>{
+    t.partidos.forEach(p=>{
+
+        let fechaPartido = formatearSimple(p.fecha);
+        let ahora = new Date();
+
+        let fechaHoraPartido = convertirHora(p.fecha, p.hora);
+
+        let duracionHoras = 2;
+
+        let finPartido = new Date(fechaHoraPartido);
+        finPartido.setHours(finPartido.getHours() + duracionHoras);
+
+        if(
+            (
+                esMismaFecha(fechaPartido, hoy) ||
+                esMismaFecha(fechaPartido, manana)
+            ) &&
+            finPartido > ahora
+        ){
+            partidosFiltrados.push(p);
+        }
+    });
+});
+
+    // 🔥 ORDENAR POR FECHA Y HORA
+    partidosFiltrados.sort((a,b)=>{
+        let f1 = new Date(a.fecha + " " + a.hora);
+        let f2 = new Date(b.fecha + " " + b.hora);
+        return f1 - f2;
+    });
+
+    // ⏱️ tiempo restante
+    function tiempoRestante(fecha, hora){
+        let ahora = new Date();
+        let partido = new Date(fecha + " " + hora);
+
+        let diff = (partido - ahora) / 1000 / 60 / 60;
+
+        if(diff <= 0) return "En juego o finalizado";
+        if(diff < 1) return "Empieza en minutos";
+        if(diff < 24) return `Empieza en ${Math.floor(diff)} horas`;
+
+        return "Mañana";
+    }
+
+    // 🎨 pintar
+    partidosFiltrados.forEach(p=>{
+
+        let fechaPartido = formatearSimple(p.fecha);
+        let estado = tiempoRestante(p.fecha, p.hora);
+
+        let etiqueta = "";
+        let color = "#ffffff22";
+
+        // 🔥 HOY
+        if(esMismaFecha(fechaPartido, hoy)){
+            etiqueta = "🔥 HOY";
+            color = "#00ff0022";
+        }
+
+        // ⏭️ MAÑANA
+        if(esMismaFecha(fechaPartido, manana)){
+            etiqueta = "⏭️ MAÑANA";
+            color = "#00bfff22";
+        }
+
+        // ⏱️ ajustes de color por estado
+        if(estado.includes("minutos")) color = "#ffff0022";
+        if(estado.includes("finalizado")) color = "#ff000022";
+
+        contenedor.innerHTML += `
+        <div class="card" style="background:${color}">
+            🆚 <b>${p.local} vs ${p.visitante}</b><br>
+            🏆 ${p.torneo}<br>
+            📅 ${formatearFecha(p.fecha)} ${etiqueta}<br>
+            🕒 ${p.hora}<br>
+            ⚽ ${p.golesLocal} - ${p.golesVisitante}<br>
+            ⏱️ ${estado}
+        </div>
+        `;
+    });
+
+    // 🚨 vacío
+    if(partidosFiltrados.length === 0){
+        contenedor.innerHTML = "<p>No hay partidos hoy ni mañana</p>";
+    }
+}
+
+function eliminarEquipo(torneoIndex, equipoIndex){
+
+    abrirModal("¿Eliminar este equipo y sus partidos?", () => {
+
+        let torneo = torneos[torneoIndex];
+
+        // validar que exista
+        if(!torneo || !torneo.equipos[equipoIndex]) return;
+
+        let equipo = torneo.equipos[equipoIndex];
+
+        // eliminar equipo
+        torneo.equipos.splice(equipoIndex,1);
+
+        // eliminar partidos donde participe
+        torneo.partidos = (torneo.partidos || []).filter(p =>
+            p.local !== equipo && p.visitante !== equipo
+        );
+
+        guardarDatos();
+        mostrarTorneos();
+        mostrarInicio();
+        mostrarEstadisticas(); // 🔥 importante para refrescar stats
+    });
+}
+
+function calcularTabla(partidos, equipos){
+
+    let tabla = equipos.map(e => ({
+        equipo: e,
+        puntos: 0,
+        jugados: 0,
+        ganados: 0,
+        empatados: 0,
+        perdidos: 0,
+        gf: 0,
+        gc: 0,
+        dg: 0
+    }));
+
+    partidos.forEach(p => {
+
+        let local = tabla.find(t => t.equipo === p.local);
+        let visitante = tabla.find(t => t.equipo === p.visitante);
+
+        if(!local || !visitante) return;
+
+        local.jugados++;
+        visitante.jugados++;
+
+        local.gf += p.golesLocal;
+        local.gc += p.golesVisitante;
+
+        visitante.gf += p.golesVisitante;
+        visitante.gc += p.golesLocal;
+
+        if(p.golesLocal > p.golesVisitante){
+            local.ganados++;
+            local.puntos += 3;
+            visitante.perdidos++;
+        } 
+        else if(p.golesLocal < p.golesVisitante){
+            visitante.ganados++;
+            visitante.puntos += 3;
+            local.perdidos++;
+        } 
+        else {
+            local.empatados++;
+            visitante.empatados++;
+            local.puntos++;
+            visitante.puntos++;
+        }
+    });
+
+    tabla.forEach(t => t.dg = t.gf - t.gc);
+
+    tabla.sort((a,b) => 
+        b.puntos - a.puntos || 
+        b.dg - a.dg || 
+        b.gf - a.gf
+    );
+
+    return tabla;
+}
+
+// estadisticas
+
+function mostrarEstadisticas(){
+
+    let contenedor = document.getElementById("listaStats");
+    contenedor.innerHTML = "";
+
+    torneos.forEach((t, i) => {
+        contenedor.innerHTML += `
+        <div class="card" onclick="verTablaTorneo(${i})">
+            🏆 ${t.nombre}
+        </div>
+        `;
+    });
+
+}
+
+function verTablaTorneo(index){
+
+    let t = torneos[index];
+
+    let tabla = calcularTabla(t.partidos || [], t.equipos);
+
+    let html = `
+    <h3>🏆 ${t.nombre}</h3>
+
+    <table border="1" style="width:100%; text-align:center; background:white; color:black;">
+    <tr>
+        <th>#</th>
+        <th>Equipo</th>
+        <th>Pts</th>
+        <th>J</th>
+        <th>G</th>
+        <th>E</th>
+        <th>P</th>
+        <th>GF</th>
+        <th>GC</th>
+        <th>DG</th>
+    </tr>
+    `;
+
+    tabla.forEach((e,i)=>{
+        html += `
+        <tr>
+            <td>${i+1}</td>
+            <td>${e.equipo}</td>
+            <td>${e.puntos}</td>
+            <td>${e.jugados}</td>
+            <td>${e.ganados}</td>
+            <td>${e.empatados}</td>
+            <td>${e.perdidos}</td>
+            <td>${e.gf}</td>
+            <td>${e.gc}</td>
+            <td>${e.dg}</td>
+        </tr>
+        `;
+    });
+
+    html += `</table>`;
+
+    document.getElementById("tablaStats").innerHTML = html;
+}
+
+function convertirHora(fecha, hora){
+    let [h, m] = hora.split(":");
+    let minutos = m.split(" ")[0];
+    let periodo = m.split(" ")[1];
+
+    h = parseInt(h);
+
+    if(periodo === "PM" && h !== 12) h += 12;
+    if(periodo === "AM" && h === 12) h = 0;
+
+    let partes = fecha.split("-");
+    return new Date(partes[0], partes[1]-1, partes[2], h, minutos);
+}
+
+function editarNombreTorneo(index, nuevoNombre){
+
+    if(!nuevoNombre.trim()){
+        alert("Nombre inválido");
+        return;
+    }
+
+    // actualizar nombre del torneo
+    torneos[index].nombre = nuevoNombre.trim();
+
+    // 🔥 actualizar también en los partidos
+    torneos[index].partidos.forEach(p=>{
+        p.torneo = nuevoNombre.trim();
+    });
+
+    guardarDatos();
+    mostrarTorneos();
+    mostrarInicio();
+    mostrarEstadisticas();
+}
+
+let accionConfirmada = null;
+
+function abrirModal(texto, callback){
+    document.getElementById("modalTexto").innerText = texto;
+    document.getElementById("modalConfirm").style.display = "flex";
+    accionConfirmada = callback;
+}
+
+function cerrarModal(){
+    document.getElementById("modalConfirm").style.display = "none";
+    accionConfirmada = null;
+}
+
+function confirmarAccion(){
+    if(accionConfirmada){
+        accionConfirmada();
+    }
+    cerrarModal();
+}
+
+function topGoleadores(){
+
+    let ranking = {};
+
+    torneos.forEach(t=>{
+        t.partidos.forEach(p=>{
+            ranking[p.local] = (ranking[p.local] || 0) + p.golesLocal;
+            ranking[p.visitante] = (ranking[p.visitante] || 0) + p.golesVisitante;
+        });
+    });
+
+    return Object.entries(ranking)
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,5);
+}
+
+function mejoresEquipos(){
+
+    let puntos = {};
+
+    torneos.forEach(t=>{
+        t.partidos.forEach(p=>{
+
+            if(!puntos[p.local]) puntos[p.local] = 0;
+            if(!puntos[p.visitante]) puntos[p.visitante] = 0;
+
+            if(p.golesLocal > p.golesVisitante){
+                puntos[p.local] += 3;
+            } 
+            else if(p.golesLocal < p.golesVisitante){
+                puntos[p.visitante] += 3;
+            } 
+            else {
+                puntos[p.local]++;
+                puntos[p.visitante]++;
+            }
+
+        });
+    });
+
+    return Object.entries(puntos)
+        .sort((a,b)=>b[1]-a[1])
+        .slice(0,5);
+}
+
+
+function cargarDesdeURL(){
+    let params = new URLSearchParams(window.location.search);
+
+    if(params.has("partido")){
+        let p = JSON.parse(decodeURIComponent(params.get("partido")));
+
+        document.getElementById("ProximosPartidos").innerHTML = `
+        <div class="card">
+            🆚 <b>${p.local} vs ${p.visitante}</b><br>
+            🏆 ${p.torneo}<br>
+            📅 ${p.fecha}<br>
+            🕒 ${p.hora}<br>
+            ⚽ ${p.golesLocal} - ${p.golesVisitante}
+        </div>
+        `;
+
+        mostrar("inicio");
+    }
+}
+
+cargarDesdeURL();
+
+function compartirPagina(){
+
+    let url = window.location.href;
+
+    if(navigator.share){
+        navigator.share({
+            title: "FUTZONE",
+            text: "Mira los torneos y partidos ⚽",
+            url: url
+        });
+    } else {
+        navigator.clipboard.writeText(url);
+        alert("Link copiado 🔗");
+    }
+}
+
+/* INICIAL */
+mostrarTorneos();
+mostrarInicio();
+mostrarEstadisticas();
+
+</script>
+
+</body>
+</html>
